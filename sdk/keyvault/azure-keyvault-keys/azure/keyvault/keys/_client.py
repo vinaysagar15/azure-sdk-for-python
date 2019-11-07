@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 class KeyClient(KeyVaultClientBase):
     """A high-level interface for managing a vault's keys.
 
-    :param str vault_url: URL of the vault the client will access
+    :param str vault_url: URL of the vault the client will access. This is also called the vault's "DNS Name".
     :param credential: An object which can provide an access token for the vault, such as a credential from
         :mod:`azure.identity`
     :keyword str api_version: version of the Key Vault API to use. Defaults to the most recent.
@@ -191,7 +191,9 @@ class KeyClient(KeyVaultClientBase):
                 :caption: Delete a key
                 :dedent: 8
         """
-        polling_interval = kwargs.pop("_polling_interval", 2)
+        polling_interval = kwargs.pop("_polling_interval", None)
+        if polling_interval is None:
+            polling_interval = 2
         deleted_key = DeletedKey._from_deleted_key_bundle(
             self._client.delete_key(self.vault_url, name, error_map=_error_map, **kwargs)
         )
@@ -378,7 +380,9 @@ class KeyClient(KeyVaultClientBase):
                 :caption: Recover a deleted key
                 :dedent: 8
         """
-        polling_interval = kwargs.pop("_polling_interval", 2)
+        polling_interval = kwargs.pop("_polling_interval", None)
+        if polling_interval is None:
+            polling_interval = 2
         recovered_key = KeyVaultKey._from_key_bundle(
             self._client.recover_deleted_key(vault_base_url=self.vault_url, key_name=name, **kwargs)
         )

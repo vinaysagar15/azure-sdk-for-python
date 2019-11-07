@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class SecretClient(KeyVaultClientBase):
     """A high-level interface for managing a vault's secrets.
 
-    :param str vault_url: URL of the vault the client will access
+    :param str vault_url: URL of the vault the client will access. This is also called the vault's "DNS Name".
     :param credential: An object which can provide an access token for the vault, such as a credential from
         :mod:`azure.identity`
     :keyword str api_version: version of the Key Vault API to use. Defaults to the most recent.
@@ -291,7 +291,9 @@ class SecretClient(KeyVaultClientBase):
                 :dedent: 8
 
         """
-        polling_interval = kwargs.pop("_polling_interval", 2)
+        polling_interval = kwargs.pop("_polling_interval", None)
+        if polling_interval is None:
+            polling_interval = 2
         deleted_secret = DeletedSecret._from_deleted_secret_bundle(
             self._client.delete_secret(self.vault_url, name, error_map=_error_map, **kwargs)
         )
@@ -411,7 +413,9 @@ class SecretClient(KeyVaultClientBase):
                 :dedent: 8
 
         """
-        polling_interval = kwargs.pop("_polling_interval", 2)
+        polling_interval = kwargs.pop("_polling_interval", None)
+        if polling_interval is None:
+            polling_interval = 2
         recovered_secret = SecretProperties._from_secret_bundle(
             self._client.recover_deleted_secret(self.vault_url, name, **kwargs)
         )

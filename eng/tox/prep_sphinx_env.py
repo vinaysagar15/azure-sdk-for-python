@@ -44,8 +44,15 @@ Indices and tables
 root_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", "..", ".."))
 sphinx_conf = os.path.join(root_dir, "doc", "sphinx", "individual_build_conf.py")
 
+# reference issue 8523 for eliminating this ridiculousness.
+UNFRIENDLY_PACKAGE_TO_NAMESPACE = {
+    'azure-storage-file-share': 'azure.storage.fileshare',
+    'azure-core-tracing-opencensus': 'azure.core.tracing.ext.opencensus_span',
+    'azure-eventhub-checkpointstoreblob-aio': 'azure.eventhub.extensions.checkpointstoreblobaio'
+}
+
 def should_build_docs(package_name):
-    return not ("nspkg" in package_name or "azure-mgmt" == package_name or "azure" == package_name)
+    return not ("nspkg" in package_name or package_name in ["azure", "azure-mgmt", "azure-keyvault", "azure-documentdb", "azure-mgmt-documentdb", "azure-servicemanagement-legacy"])
 
 def create_index_file(readme_location, package_rst):
     readme_ext = os.path.splitext(readme_location)[1]
@@ -154,6 +161,9 @@ if __name__ == "__main__":
     package_name, package_version = get_package_details(
         os.path.join(package_path, "setup.py")
     )
+
+    if package_name in UNFRIENDLY_PACKAGE_TO_NAMESPACE.keys():
+        package_name = UNFRIENDLY_PACKAGE_TO_NAMESPACE[package_name]
 
     if should_build_docs(package_name):
         source_location = move_and_rename(unzip_sdist_to_directory(args.dist_dir))
