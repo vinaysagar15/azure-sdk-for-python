@@ -13,6 +13,8 @@ import ast
 import os
 import textwrap
 import io
+import glob
+import zipfile
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -50,10 +52,32 @@ def get_package_details(setup_filename):
     os.chdir(current_dir)
     _, kwargs = global_vars["__setup_calls__"][0]
 
-    return kwargs["name"], kwargs["version"]
+    package_name = kwargs["name"]
+    # default namespace for the package
+    name_space = package_name.replace('-', '.')
+    if "packages" in kwargs.keys():
+        packages = kwargs["packages"]
+        if packages:
+            name_space = packages[0]
+            logging.info("Namespaces found for package {0}: {1}".format(package_name, packages))
 
-def get_package_namespace(setup_filename):
-    # traverse until meeting an improperly formatted __init__
-    pass
+    return package_name, name_space, kwargs["version"]
 
-    
+def unzip_sdist_to_directory(containing_folder):
+    # grab the first one
+    path_to_zip_file = glob.glob(os.path.join(containing_folder, "*.zip"))[0]
+    return unzip_file_to_directory(path_to_zip_file, containing_folder)
+
+def unzip_file_to_directory(path_to_zip_file, extract_location):
+    # unzip file in given path
+    # dump into given path
+    with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
+        zip_ref.extractall(extract_location)
+        extracted_dir = os.path.basename(os.path.splitext(path_to_zip_file)[0])
+        return os.path.join(extract_location, extracted_dir)
+
+def move_and_rename(source_location):
+    new_location = os.path.join(os.path.dirname(source_location), "unzipped")
+    os.rename(source_location, new_location)
+
+    return new_location

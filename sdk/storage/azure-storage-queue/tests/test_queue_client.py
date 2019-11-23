@@ -27,7 +27,7 @@ _CONNECTION_ENDPOINTS_SECONDARY = {'queue': 'QueueSecondaryEndpoint'}
 class StorageQueueClientTest(StorageTestCase):
     def setUp(self):
         super(StorageQueueClientTest, self).setUp()
-        self.sas_token = '?sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=b&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D'
+        self.sas_token = self.generate_sas_token()
         self.token_credential = self.generate_oauth_token()
 
     # --Helpers-----------------------------------------------------------------
@@ -458,6 +458,44 @@ class StorageQueueClientTest(StorageTestCase):
             # Assert
         self.assertEqual(service.scheme, 'https')
         self.assertEqual(service.queue_name, 'bar')
+
+    def test_error_with_malformed_conn_str(self):
+        # Arrange
+
+        for conn_str in ["", "foobar", "foobar=baz=foo", "foo;bar;baz", "foo=;bar=;", "=", ";", "=;=="]:
+            for service_type in SERVICES.items():
+                # Act
+                with self.assertRaises(ValueError) as e:
+                    service = service_type[0].from_connection_string(conn_str, queue_name="test")
+                
+                if conn_str in("", "foobar", "foo;bar;baz", ";"):
+                    self.assertEqual(
+                        str(e.exception), "Connection string is either blank or malformed.")
+                elif conn_str in ("foobar=baz=foo" , "foo=;bar=;", "=", "=;=="):
+                    self.assertEqual(
+                        str(e.exception), "Connection string missing required connection details.")
+
+    @GlobalStorageAccountPreparer()
+    def test_closing_pipeline_client(self, resource_group, location, storage_account, storage_account_key):
+        # Arrange
+        for client, url in SERVICES.items():
+            # Act
+            service = client(
+                self.account_url(storage_account.name, "queue"), credential=storage_account_key, queue_name='queue')
+
+            # Assert
+            with service:
+                assert hasattr(service, 'close')
+                service.close()
+
+    @GlobalStorageAccountPreparer()
+    def test_closing_pipeline_client_simple(self, resource_group, location, storage_account, storage_account_key):
+        # Arrange
+        for client, url in SERVICES.items():
+            # Act
+            service = client(
+                self.account_url(storage_account.name, "queue"), credential=storage_account_key, queue_name='queue')
+            service.close()
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':
     unittest.main()

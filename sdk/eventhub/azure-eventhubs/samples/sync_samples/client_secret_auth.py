@@ -13,15 +13,22 @@ from azure.eventhub import EventData, EventHubProducerClient
 from azure.identity import EnvironmentCredential
 
 
-HOSTNAME = os.environ['EVENT_HUB_HOSTNAME']
-EVENT_HUB = os.environ['EVENT_HUB_NAME']
+fully_qualified_namespace = os.environ['EVENT_HUB_HOSTNAME']
+eventhub_name = os.environ['EVENT_HUB_NAME']
 
 
 credential = EnvironmentCredential()
-producer = EventHubProducerClient(host=HOSTNAME,
-                                  event_hub_path=EVENT_HUB,
+producer = EventHubProducerClient(fully_qualified_namespace=fully_qualified_namespace,
+                                  eventhub_name=eventhub_name,
                                   credential=credential)
 
 with producer:
-    event = EventData(body='A single message')
-    producer.send(event, partition_id='0')
+    event_data_batch = producer.create_batch(max_size_in_bytes=10000)
+    while True:
+        try:
+            event_data_batch.add(EventData('Message inside EventBatchData'))
+        except ValueError:
+            # EventDataBatch object reaches max_size.
+            # New EventDataBatch object can be created here to send more data
+            break
+    producer.send_batch(event_data_batch)

@@ -39,7 +39,7 @@ class StorageFileClientTest(FileTestCase):
         super(StorageFileClientTest, self).setUp()
         self.account_name = self.settings.STORAGE_ACCOUNT_NAME
         self.account_key = self.settings.STORAGE_ACCOUNT_KEY
-        self.sas_token = '?sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=b&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D'
+        self.sas_token = self.generate_sas_token()
         self.token_credential = self.generate_oauth_token()
 
     # --Helpers-----------------------------------------------------------------
@@ -401,6 +401,43 @@ class StorageFileClientTest(FileTestCase):
         custom_headers = {'User-Agent': 'customer_user_agent'}
         service.get_service_properties(raw_response_hook=callback, headers=custom_headers)
 
+    def test_error_with_malformed_conn_str(self):
+        # Arrange
+
+        for conn_str in ["", "foobar", "foobar=baz=foo", "foo;bar;baz", "foo=;bar=;", "=", ";", "=;=="]:
+            for service_type in SERVICES.items():
+                # Act
+                with self.assertRaises(ValueError) as e:
+                    service = service_type[0].from_connection_string(conn_str, share_name="test", directory_path="foo/bar", file_path="temp/dat")
+                
+                if conn_str in("", "foobar", "foo;bar;baz", ";"):
+                    self.assertEqual(
+                        str(e.exception), "Connection string is either blank or malformed.")
+                elif conn_str in ("foobar=baz=foo" , "foo=;bar=;", "=", "=;=="):
+                    self.assertEqual(
+                        str(e.exception), "Connection string missing required connection details.")
+
+    def test_closing_pipeline_client(self):
+        # Arrange
+
+        for client, url in SERVICES.items():
+            # Act
+            service = client(
+                self.get_file_url(), credential=self.account_key, share_name='foo', directory_path='bar', file_path='baz')
+
+            # Assert
+            with service:
+                assert hasattr(service, 'close')
+                service.close()
+
+    def test_closing_pipeline_client_simple(self):
+        # Arrange
+
+        for client, url in SERVICES.items():
+            # Act
+            service = client(
+                self.get_file_url(), credential=self.account_key, share_name='foo', directory_path='bar', file_path='baz')
+            service.close()
 
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':

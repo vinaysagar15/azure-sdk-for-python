@@ -36,6 +36,7 @@ from .._azure_appconfiguration_requests import AppConfigRequestsCredentialsPolic
 from .._azure_appconfiguration_credential import AppConfigConnectionStringCredential
 from .._generated.models import KeyValue
 from .._models import ConfigurationSetting
+from .._sync_token import SyncTokenPolicy
 from .._user_agent import USER_AGENT
 
 
@@ -57,7 +58,7 @@ class AzureAppConfigurationClient:
 
     def __init__(self, base_url, credential, **kwargs):
         # type: (str, AppConfigConnectionStringCredential, dict) -> None
-        self._config = AzureAppConfigurationConfiguration(credential, **kwargs)
+        self._config = AzureAppConfigurationConfiguration(credential, base_url, **kwargs)
         self._config.user_agent_policy = UserAgentPolicy(
             base_user_agent=USER_AGENT, **kwargs
         )
@@ -68,7 +69,7 @@ class AzureAppConfigurationClient:
             pipeline = self._create_appconfig_pipeline(**kwargs)
 
         self._impl = AzureAppConfiguration(
-            credentials=credential, base_url=base_url, pipeline=pipeline
+            credentials=credential, endpoint=base_url, pipeline=pipeline
         )
 
 
@@ -112,6 +113,7 @@ class AzureAppConfigurationClient:
                 self._config.headers_policy,
                 self._config.user_agent_policy,
                 AppConfigRequestsCredentialsPolicy(self._config.credentials),
+                SyncTokenPolicy(),
                 self._config.retry_policy,
                 self._config.logging_policy,  # HTTP request/response log
                 DistributedTracingPolicy(**kwargs),
@@ -487,13 +489,15 @@ class AzureAppConfigurationClient:
 
     @distributed_trace
     async def set_read_only(
-            self, configuration_setting, **kwargs
-    ):  # type: (ConfigurationSetting, dict) -> ConfigurationSetting
+            self, configuration_setting, read_only=True, **kwargs
+    ):  # type: (ConfigurationSetting, Optional[bool], dict) -> ConfigurationSetting
 
         """Set a configuration setting read only
 
         :param configuration_setting: the ConfigurationSetting to be set read only
         :type configuration_setting: :class:`ConfigurationSetting`
+        :param read_only: set the read only setting if true, else clear the read only setting
+        :type read_only: bool
         :keyword dict headers: if "headers" exists, its value (a dict) will be added to the http request header
         :return: The ConfigurationSetting returned from the service
         :rtype: :class:`ConfigurationSetting`
@@ -508,6 +512,7 @@ class AzureAppConfigurationClient:
             )
 
             read_only_config_setting = await async_client.set_read_only(config_setting)
+            read_only_config_setting = await client.set_read_only(config_setting, read_only=False)
         """
         error_map = {
             401: ClientAuthenticationError,
@@ -515,52 +520,20 @@ class AzureAppConfigurationClient:
         }
 
         try:
-            key_value = await self._impl.put_lock(
-                key=configuration_setting.key,
-                label=configuration_setting.label,
-                error_map=error_map,
-                **kwargs
-            )
-            return ConfigurationSetting._from_key_value(key_value)
-        except ErrorException as error:
-            raise HttpResponseError(message=error.message, response=error.response)
-
-    @distributed_trace
-    async def clear_read_only(
-            self, configuration_setting, **kwargs
-    ):  # type: (ConfigurationSetting, dict) -> ConfigurationSetting
-
-        """Clear read only flag for a configuration setting
-
-        :param configuration_setting: the ConfigurationSetting to be read only clear
-        :type configuration_setting: :class:`ConfigurationSetting`
-        :keyword dict headers: if "headers" exists, its value (a dict) will be added to the http request header
-        :return: The ConfigurationSetting returned from the service
-        :rtype: :class:`ConfigurationSetting`
-        :raises: :class:`HttpResponseError`, :class:`ClientAuthenticationError`, :class:`ResourceNotFoundError`
-
-        Example
-
-        .. code-block:: python
-
-            config_setting = await async_client.get_configuration_setting(
-                key="MyKey", label="MyLabel"
-            )
-
-            read_only_config_setting = await async_client.clear_read_only(config_setting)
-        """
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError
-        }
-
-        try:
-            key_value = await self._impl.delete_lock(
-                key=configuration_setting.key,
-                label=configuration_setting.label,
-                error_map=error_map,
-                **kwargs
-            )
+            if read_only:
+                key_value = await self._impl.put_lock(
+                    key=configuration_setting.key,
+                    label=configuration_setting.label,
+                    error_map=error_map,
+                    **kwargs
+                )
+            else:
+                key_value = await self._impl.delete_lock(
+                    key=configuration_setting.key,
+                    label=configuration_setting.label,
+                    error_map=error_map,
+                    **kwargs
+                )
             return ConfigurationSetting._from_key_value(key_value)
         except ErrorException as error:
             raise HttpResponseError(message=error.message, response=error.response)

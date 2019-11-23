@@ -13,7 +13,7 @@ The Azure Event Hubs client library allows for publishing and consuming of Azure
 - Observe interesting operations and interactions happening within your business or other ecosystem, allowing loosely coupled systems to interact without the need to bind them together.
 - Receive events from one or more publishers, transform them to better meet the needs of your ecosystem, then publish the transformed events to a new stream for consumers to observe.
 
-[Source code](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/eventhub/azure-eventhubs) | [Package (PyPi)](https://pypi.org/project/azure-eventhub/5.0.0b5) | [API reference documentation](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-eventhub/5.0.0b5/azure.eventhub.html) | [Product documentation](https://docs.microsoft.com/en-us/azure/event-hubs/)
+[Source code](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/eventhub/azure-eventhubs) | [Package (PyPi)](https://pypi.org/project/azure-eventhub/5.0.0b6) | [API reference documentation](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-eventhub/5.0.0b6/azure.eventhub.html) | [Product documentation](https://docs.microsoft.com/en-us/azure/event-hubs/)
 
 ## Getting started
 
@@ -189,13 +189,13 @@ client = EventHubConsumerClient.from_connection_string(connection_str, event_hub
 
 logger = logging.getLogger("azure.eventhub")
 
-def on_events(partition_context, events):
-    logger.info("Received {} events from partition {}".format(len(events), partition_context.partition_id))
+def on_event(partition_context, event):
+    logger.info("Received event from partition {}".format(partition_context.partition_id))
 
 with client:
-    client.receive(on_events=on_events, consumer_group="$Default")
+    client.receive(on_event=on_event, consumer_group="$Default")
     # receive events from specified partition:
-    # client.receive(on_events=on_events, consumer_group="$Default", partition_id='0')
+    # client.receive(on_event=on_event, consumer_group="$Default", partition_id='0')
 ```
 
 ### Async publish events to an Event Hub
@@ -273,15 +273,15 @@ event_hub_path = '<< NAME OF THE EVENT HUB >>'
 
 logger = logging.getLogger("azure.eventhub")
 
-async def on_events(partition_context, events):
-    logger.info("Received {} events from partition {}".format(len(events), partition_context.partition_id))
+async def on_event(partition_context, event):
+    logger.info("Received event from partition {}".format(partition_context.partition_id))
 
 async def receive():
     client = EventHubConsumerClient.from_connection_string(connection_str, event_hub_path=event_hub_path)
     async with client:
-        received = await client.receive(on_events=on_events, consumer_group='$Default')
+        received = await client.receive(on_event=on_event, consumer_group='$Default')
         # receive events from specified partition:
-        # received = await client.receive(on_events=on_events, consumer_group='$Default', partition_id='0')
+        # received = await client.receive(on_event=on_event, consumer_group='$Default', partition_id='0')
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
@@ -302,12 +302,12 @@ and to store the relevant information required by the load balancing algorithm.
 Search pypi with the prefix `azure-eventhub-checkpointstore` to
 find packages that support this and use the PartitionManager implementation from one such package. Please note that both sync and async libraries are provided.
 
-In the below example, we create an instance of `EventHubConsumerClient` and use a `BlobPartitionManager`. You need
+In the below example, we create an instance of `EventHubConsumerClient` and use a `BlobCheckpointStore`. You need
 to [create an Azure Storage account](https://docs.microsoft.com/en-us/azure/storage/common/storage-quickstart-create-account?tabs=azure-portal)
 and a [Blob Container](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-portal#create-a-container) to run the code.
 
 [Azure Blob Storage Partition Manager Async](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/eventhub/azure-eventhubs-checkpointstoreblob-aio)
-and [Azure Blob Storage Partition Manager Sync](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/eventhub/azure-eventhubs-checkpointstoreblob)
+and [Azure Blob Storage Checkpoint Store Sync](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/eventhub/azure-eventhubs-checkpointstoreblob)
 are one of the `PartitionManager` implementations we provide that applies Azure Blob Storage as the persistent store.
 
 
@@ -316,37 +316,35 @@ import asyncio
 
 from azure.eventhub.aio import EventHubConsumerClient
 from azure.storage.blob.aio import ContainerClient
-from azure.eventhub.extensions.checkpointstoreblobaio import BlobPartitionManager
+from azure.eventhub.extensions.checkpointstoreblobaio import BlobCheckpointStore
 
 RECEIVE_TIMEOUT = 5  # timeout in seconds for a receiving operation. 0 or None means no timeout
 RETRY_TOTAL = 3  # max number of retries for receive operations within the receive timeout. Actual number of retries clould be less if RECEIVE_TIMEOUT is too small
 connection_str = '<< CONNECTION STRING FOR THE EVENT HUBS NAMESPACE >>'
 event_hub_path = '<< NAME OF THE EVENT HUB >>'
 storage_connection_str = '<< CONNECTION STRING FOR THE STORAGE >>'
-blob_name_str = '<<STRING FOR THE BLOB NAME>>'
+container_name = '<<STRING FOR THE BLOB NAME>>'
 
 async def do_operation(event):
     # do some sync or async operations. If the operation is i/o intensive, async will have better performance
     print(event)
 
 
-async def process_events(partition_context, events):
-    await asyncio.gather(*[do_operation(event) for event in events])
-    await partition_context.update_checkpoint(events[-1])
+async def process_event(partition_context, event):
+    await partition_context.update_checkpoint(event)
 
 async def receive(client):
     try:
-        await client.receive(on_events=process_events, consumer_group="$Default")
+        await client.receive(on_event=process_event, consumer_group="$Default")
     except KeyboardInterrupt:
         await client.close()
 
 async def main():
-    container_client = ContainerClient.from_connection_string(storage_connection_str, blob_name_str)
-    partition_manager = BlobPartitionManager(container_client)
+    checkpoint_store = BlobCheckpointStore.from_connection_string(storage_connection_str, container_name)
     client = EventHubConsumerClient.from_connection_string(
         connection_str,
         event_hub_path=event_hub_path,
-        partition_manager=partition_manager,  # For load balancing and checkpoint. Leave None for no load balancing
+        checkpoint_store=checkpoint_store,  # For load balancing and checkpoint. Leave None for no load balancing
     )
     async with client:
         await receive(client)
@@ -402,7 +400,7 @@ There are [more samples](https://github.com/Azure/azure-sdk-for-python/blob/mast
 
 ### Documentation
 
-Reference documentation is available [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-eventhub/5.0.0b5/azure.eventhub.html).
+Reference documentation is available [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-eventhub/5.0.0b6/azure.eventhub.html).
 
 ### Logging
 

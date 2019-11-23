@@ -27,13 +27,6 @@
     ],
     "service_name": "Cognitive Services Recognizer"
   },
-  "azure-cognitiveservices-inkrecognizer": {
-    "category": "Client",
-    "namespaces": [
-      "azure.cognitiveservices.inkrecognizer"
-    ],
-    "service_name": "Cognitive Services Recognizer"
-  },
   "azure-cognitiveservices-personalizer": {
     "category": "Client",
     "namespaces": [
@@ -879,6 +872,11 @@
     "manually_generated": true
   },
   "azure-storage-file-share": {
+    "category": "Client",
+    "service_name": "Storage",
+    "manually_generated": true
+  },
+  "azure-storage-file-datalake": {
     "category": "Client",
     "service_name": "Storage",
     "manually_generated": true

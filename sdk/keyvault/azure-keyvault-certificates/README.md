@@ -2,9 +2,9 @@
 Azure Key Vault helps solve the following problems:
 - Certificate management (this library) - create, manage, and deploy public and private SSL/TLS certificates
 - Cryptographic key management
-([`azure-keyvault-keys`](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/keyvault/azure-keyvault-keys)) - create, store, and control access to the keys used to encrypt your data
+([azure-keyvault-keys](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/keyvault/azure-keyvault-keys)) - create, store, and control access to the keys used to encrypt your data
 - Secrets management
-([`azure-keyvault-secrets`](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/keyvault/azure-keyvault-secrets)) -
+([azure-keyvault-secrets](https://github.com/Azure/azure-sdk-for-python/tree/master/sdk/keyvault/azure-keyvault-secrets)) -
 securely store and control access to tokens, passwords, certificates, API keys,
 and other secrets
 
@@ -27,41 +27,43 @@ authentication as demonstrated below.
 [Azure Cloud Shell][azure_cloud_shell] to create one with these commands
 (replace `"my-resource-group"` and `"my-key-vault"` with your own, unique
 names):
-  * (Optional) if you want a new resource group to hold the Key Vault:
-    ```sh
-    az group create --name my-resource-group --location westus2
-    ```
-  * Create the Key Vault:
-    ```Bash
-    az keyvault create --resource-group my-resource-group --name my-key-vault
-    ```
 
-    Output:
-    ```json
-    {
-        "id": "...",
-        "location": "westus2",
-        "name": "my-key-vault",
-        "properties": {
-            "accessPolicies": [...],
-            "createMode": null,
-            "enablePurgeProtection": null,
-            "enableSoftDelete": null,
-            "enabledForDeployment": false,
-            "enabledForDiskEncryption": null,
-            "enabledForTemplateDeployment": null,
-            "networkAcls": null,
-            "provisioningState": "Succeeded",
-            "sku": { "name": "standard" },
-            "tenantId": "...",
-            "vaultUri": "https://my-key-vault.vault.azure.net/"
-        },
-        "resourceGroup": "my-resource-group",
-        "type": "Microsoft.KeyVault/vaults"
-    }
-    ```
+  (Optional) if you want a new resource group to hold the Key Vault:
+  ```sh
+  az group create --name my-resource-group --location westus2
+  ```
 
-    > The `"vaultUri"` property is the `vault_url` used by [CertificateClient][certificate_client_docs]
+  Create the Key Vault:
+  ```Bash
+  az keyvault create --resource-group my-resource-group --name my-key-vault
+  ```
+
+  Output:
+  ```json
+  {
+      "id": "...",
+      "location": "westus2",
+      "name": "my-key-vault",
+      "properties": {
+          "accessPolicies": [...],
+          "createMode": null,
+          "enablePurgeProtection": null,
+          "enableSoftDelete": null,
+          "enabledForDeployment": false,
+          "enabledForDiskEncryption": null,
+          "enabledForTemplateDeployment": null,
+          "networkAcls": null,
+          "provisioningState": "Succeeded",
+          "sku": { "name": "standard" },
+          "tenantId": "...",
+          "vaultUri": "https://my-key-vault.vault.azure.net/"
+      },
+      "resourceGroup": "my-resource-group",
+      "type": "Microsoft.KeyVault/vaults"
+  }
+  ```
+
+  > The `"vaultUri"` property is the `vault_url` used by [CertificateClient][certificate_client_docs]
 
 ### Authenticate the client
 This document demonstrates using [DefaultAzureCredential][default_cred_ref]
@@ -70,40 +72,41 @@ accepts any [azure-identity][azure_identity] credential. See the
 [azure-identity][azure_identity] documentation for more information about other
 credentials.
 
-#### Create a service principal
+#### Create a service principal (optional)
 This [Azure Cloud Shell][azure_cloud_shell] snippet shows how to create a
 new service principal. Before using it, replace "your-application-name" with
 a more appropriate name for your service principal.
 
- * Create a service principal:
-    ```Bash
-    az ad sp create-for-rbac --name http://my-application --skip-assignment
-    ```
-    Output:
-    ```json
-    {
-        "appId": "generated app id",
-        "displayName": "my-application",
-        "name": "http://my-application",
-        "password": "random password",
-        "tenant": "tenant id"
-    }
-    ```
+Create a service principal:
+```Bash
+az ad sp create-for-rbac --name http://my-application --skip-assignment
+```
 
-    * Use the output to set **AZURE_CLIENT_ID** (appId), **AZURE_CLIENT_SECRET**
-(password) and **AZURE_TENANT_ID** (tenant) environment variables. The
-following example shows a way to do this in Bash:
-  ```Bash
-   export AZURE_CLIENT_ID="generated app id"
-   export AZURE_CLIENT_SECRET="random password"
-   export AZURE_TENANT_ID="tenant id"
-  ```
+> Output:
+> ```json
+> {
+>     "appId": "generated app id",
+>     "displayName": "my-application",
+>     "name": "http://my-application",
+>     "password": "random password",
+>     "tenant": "tenant id"
+> }
+> ```
 
-* Authorize the service principal to perform certificate operations in your Key Vault:
-    ```Bash
-    az keyvault set-policy --name my-key-vault --spn $AZURE_CLIENT_ID --certificate-permissions backup create delete get import list purge recover restore update
-    ```
-    > Possible certificate permissions: backup, create, delete, deleteissuers, get, getissuers, import, list, listissuers, managecontacts, manageissuers, purge, recover, restore, setissuers, update
+Use the output to set **AZURE_CLIENT_ID** ("appId" above), **AZURE_CLIENT_SECRET**
+("password" above) and **AZURE_TENANT_ID** ("tenant" above) environment variables.
+The following example shows a way to do this in Bash:
+```Bash
+export AZURE_CLIENT_ID="generated app id"
+export AZURE_CLIENT_SECRET="random password"
+export AZURE_TENANT_ID="tenant id"
+```
+
+Authorize the service principal to perform certificate operations in your Key Vault:
+```Bash
+az keyvault set-policy --name my-key-vault --spn $AZURE_CLIENT_ID --certificate-permissions backup create delete get import list purge recover restore update
+```
+> Possible certificate permissions: backup, create, delete, deleteissuers, get, getissuers, import, list, listissuers, managecontacts, manageissuers, purge, recover, restore, setissuers, update
 
 #### Create a client
 Once the **AZURE_CLIENT_ID**, **AZURE_CLIENT_SECRET** and
@@ -155,7 +158,9 @@ credential = DefaultAzureCredential()
 
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
 
-create_certificate_poller = certificate_client.begin_create_certificate(name="cert-name", policy=CertificatePolicy.get_default())
+create_certificate_poller = certificate_client.begin_create_certificate(
+    certificate_name="cert-name", policy=CertificatePolicy.get_default()
+)
 print(create_certificate_poller.result())
 ```
 If you would like to check the status of your certificate creation, you can call `status()` on the poller or
@@ -172,7 +177,7 @@ credential = DefaultAzureCredential()
 
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
 
-certificate = certificate_client.get_certificate(name="cert-name")
+certificate = certificate_client.get_certificate("cert-name")
 
 print(certificate.name)
 print(certificate.properties.version)
@@ -188,13 +193,13 @@ from azure.keyvault.certificates import CertificateClient
 credential = DefaultAzureCredential()
 
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
-certificate = certificate_client.get_certificate_version(name="cert-name", version="cert-version")
+certificate = certificate_client.get_certificate_version(certificate_name="cert-name", version="cert-version")
 
 print(certificate.name)
 print(certificate.properties.version)
 ```
 
-### Update properties of an existing Certificate]
+### Update properties of an existing Certificate
 [update_certificate_properties](https://aka.ms/azsdk-python-keyvault-certificates-updatecertprops-ref) updates a certificate previously stored in the Key Vault.
 ```python
 from azure.identity import DefaultAzureCredential
@@ -205,7 +210,9 @@ credential = DefaultAzureCredential()
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
 
 # we will now disable the certificate for further use
-updated_certificate= certificate_client.update_certificate_properties(name="cert-name", enabled=False)
+updated_certificate= certificate_client.update_certificate_properties(
+    certificate_name="cert-name", enabled=False
+)
 
 print(updated_certificate.name)
 print(updated_certificate.properties.enabled)
@@ -225,10 +232,10 @@ credential = DefaultAzureCredential()
 
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
 
-deleted_certificate = certificate_client.delete_certificate(name="cert-name")
+deleted_certificate = certificate_client.begin_delete_certificate("cert-name")
 
 print(deleted_certificate.name)
-print(deleted_certificate.deleted_date)
+print(deleted_certificate.deleted_on)
 ```
 ### List properties of Certificates
 [list_properties_of_certificates](https://aka.ms/azsdk-python-keyvault-certs-listcerts-ref) lists the properties of all certificates in the specified Key Vault.
@@ -249,7 +256,7 @@ for certificate in certificates:
 
 ### Async operations
 This library includes a complete async API supported on Python 3.5+. To use it, you must
-first install an async transport, such as [`aiohttp`](https://pypi.org/project/aiohttp/).
+first install an async transport, such as [aiohttp](https://pypi.org/project/aiohttp/).
 See
 [azure-core documentation](https://github.com/Azure/azure-sdk-for-python/blob/master/sdk/core/azure-core/README.md#transport)
 for more information.
@@ -269,7 +276,9 @@ credential = DefaultAzureCredential()
 
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
 
-create_certificate_result = await certificate_client.create_certificate(name="cert-name", policy=CertificatePolicy.get_default())
+create_certificate_result = await certificate_client.create_certificate(
+    certificate_name="cert-name", policy=CertificatePolicy.get_default()
+)
 print(create_certificate_result)
 ```
 
@@ -277,16 +286,12 @@ print(create_certificate_result)
 [list_properties_of_certificates](https://aka.ms/azsdk-python-keyvault-certs-async-listcerts-ref) lists all the
 properties of the certificates in the client's vault:
 ```python
-<<<<<<< HEAD
-certificates = certificate_client.list_properties_of_certificates()
-=======
 from azure.identity.aio import DefaultAzureCredential
 from azure.keyvault.certificates.aio import CertificateClient
 
 credential = DefaultAzureCredential()
 
 certificate_client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", credential=credential)
->>>>>>> 9a05c74b0f87b154ad2c941b3cbc5710817ea133
 
 certificates = certificate_client.list_properties_of_certificates()
 async for certificate in certificates:
@@ -341,7 +346,7 @@ client = CertificateClient(vault_url="https://my-key-vault.vault.azure.net/", cr
 
 Network trace logging can also be enabled for any single operation:
  ```python
-certificate = certificate_client.get_certificate(name="cert-name", logging_enable=True)
+certificate = certificate_client.get_certificate(certificate_name="cert-name", logging_enable=True)
 ```
 
 ## Next steps

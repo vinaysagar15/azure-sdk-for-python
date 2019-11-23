@@ -113,6 +113,9 @@ class StorageAccountHostsMixin(object):  # pylint: disable=too-many-instance-att
     def __exit__(self, *args):
         self._client.__exit__(*args)
 
+    def close(self):
+        self._client.close()
+
     @property
     def url(self):
         """The full endpoint URL to this entity, including SAS token if used.
@@ -317,9 +320,10 @@ def format_shared_key_credential(account, credential):
 
 def parse_connection_str(conn_str, credential, service):
     conn_str = conn_str.rstrip(";")
-    conn_settings = dict( # pylint: disable=consider-using-dict-comprehension
-        [s.split("=", 1) for s in conn_str.split(";")]
-    )
+    conn_settings = [s.split("=", 1) for s in conn_str.split(";")]
+    if  any(len(tup) != 2 for tup in conn_settings):
+        raise ValueError("Connection string is either blank or malformed.")
+    conn_settings = dict(conn_settings)
     endpoints = _SERVICE_PARAMS[service]
     primary = None
     secondary = None

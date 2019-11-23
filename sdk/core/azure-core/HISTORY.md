@@ -4,6 +4,21 @@
 -------------------
 ## 1.1.0b1 Unreleased
 
+### Features
+
+- New RequestIdPolicy   #8437
+- Enable logging policy in default pipeline #8053
+- Normalize transport timeout.   #8000
+  Now we have:
+  * 'connection_timeout' - a single float in seconds for the connection timeout. Default 5min
+  * 'read_timeout' - a single float in seconds for the read timeout. Default 5min
+
+### Bug fixes
+
+- RequestHistory: deepcopy fails if request contains a stream  #7732
+- Retry: retry raises error if response does not have http_response #8629
+- Client kwargs are now passed to DistributedTracingPolicy correctly    #8051
+- NetworkLoggingPolicy now logs correctly all requests in case of retry #8262
 
 ## Version 1.0.1
 
