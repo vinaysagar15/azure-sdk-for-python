@@ -50,7 +50,7 @@ class ChainedTokenCredential(object):
         # type: (*str, **Any) -> AccessToken
         """Request a token from each chained credential, in order, returning the first token received.
 
-        .. note:: This method is called by Azure SDK clients. It isn't intended for use in application code.
+        .. note:: This method is called by Azure SDK clients. It isn't intended for use in application code
 
         :param str scopes: desired scopes for the token
         :raises ~azure.core.exceptions.ClientAuthenticationError: no credential in the chain provided a token
